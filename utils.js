@@ -109,11 +109,26 @@ async function addPorts(path, servicePorts) {
   await fs.promises.writeFile(path, document.toString());
 }
 
+async function setServiceProperty(path, serviceName, property, value) {
+  console.log(`Setting ${property} on service ${serviceName} in ${path}`);
+
+  const file = await fs.promises.readFile(path, "utf8");
+  const document = yaml.parseDocument(file);
+
+  const service = document.getIn(["services", serviceName]);
+  if (service) {
+    service.set(property, value);
+  }
+
+  await fs.promises.writeFile(path, document.toString());
+}
+
 export default {
   cloneOrPullRepo,
   removeContainerNames,
   removePorts,
   addPorts,
+  setServiceProperty,
   copyDir,
   downloadFile,
   renameFile,

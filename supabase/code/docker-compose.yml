@@ -188,8 +188,11 @@ services:
 
   realtime:
     # This container name looks inconsistent but is correct because realtime constructs tenant id by parsing the subdomain
-    image: supabase/realtime:v2.68.0
+    container_name: realtime-dev.supabase-realtime
+    image: supabase/realtime:v2.72.0
     restart: unless-stopped
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     depends_on:
       db:
         # Disable this if you are using an external Postgres database
@@ -204,8 +207,9 @@ services:
             ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health"
         ]
       timeout: 5s
-      interval: 5s
+      interval: 30s
       retries: 3
+      start_period: 10s
     environment:
       PORT: 4000
       DB_HOST: ${POSTGRES_HOST}
@@ -225,6 +229,7 @@ services:
       APP_NAME: realtime
       SEED_SELF_HOST: "true"
       RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
 
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
