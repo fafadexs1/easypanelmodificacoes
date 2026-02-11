@@ -18,4 +18,8 @@ if [ -n "${DB_HOST:-}" ]; then
   fi
 fi
 
+if [ "$#" -eq 0 ]; then
+  set -- /app/bin/server
+fi
+
 exec /app/run.sh "$@"
