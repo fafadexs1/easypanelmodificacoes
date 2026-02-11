@@ -191,6 +191,15 @@ services:
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.72.0
     restart: unless-stopped
+    entrypoint:
+      [
+        "/usr/bin/tini",
+        "-s",
+        "-g",
+        "--",
+        "/bin/bash",
+        "/tmp/realtime-entrypoint.sh"
+      ]
     depends_on:
       db:
         # Disable this if you are using an external Postgres database
@@ -228,6 +237,8 @@ services:
       SEED_SELF_HOST: "true"
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
+    volumes:
+      - ./volumes/realtime/entrypoint.sh:/tmp/realtime-entrypoint.sh:ro,z
     networks:
       default:
         aliases:
