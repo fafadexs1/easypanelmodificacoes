@@ -123,12 +123,22 @@ async function setServiceProperty(path, serviceName, property, value) {
   await fs.promises.writeFile(path, document.toString());
 }
 
+async function setTopLevelProperty(path, property, value) {
+  console.log(`Setting top-level ${property} in ${path}`);
+
+  const file = await fs.promises.readFile(path, "utf8");
+  const document = yaml.parseDocument(file);
+  document.set(property, value);
+  await fs.promises.writeFile(path, document.toString());
+}
+
 export default {
   cloneOrPullRepo,
   removeContainerNames,
   removePorts,
   addPorts,
   setServiceProperty,
+  setTopLevelProperty,
   copyDir,
   downloadFile,
   renameFile,

@@ -191,8 +191,6 @@ services:
     container_name: realtime-dev.supabase-realtime
     image: supabase/realtime:v2.72.0
     restart: unless-stopped
-    sysctls:
-      - net.ipv6.conf.all.disable_ipv6=1
     depends_on:
       db:
         # Disable this if you are using an external Postgres database
@@ -230,6 +228,10 @@ services:
       SEED_SELF_HOST: "true"
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
+    networks:
+      default:
+        aliases:
+          - realtime-dev.supabase-realtime
 
   # To use S3 backed storage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up
   storage:
@@ -497,3 +499,7 @@ services:
 
 volumes:
   db-config:
+
+networks:
+  default:
+    enable_ipv6: false

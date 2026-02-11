@@ -12,8 +12,13 @@ await utils.addPorts("./code/docker-compose.yml", {
 
 // Realtime needs its container_name for Kong routing and tenant ID parsing
 await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "container_name", "realtime-dev.supabase-realtime");
-// Disable IPv6 at container level to fix :enetunreach errors with Postgrex
-await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "sysctls", ["net.ipv6.conf.all.disable_ipv6=1"]);
+
+// Disable IPv6 on Docker network to fix Postgrex :enetunreach errors
+// Realtime's detect_ip_version() tries IPv6 first; disabling IPv6 at the network level
+// forces DNS to only return IPv4 addresses
+await utils.setTopLevelProperty("./code/docker-compose.yml", "networks", {
+  default: { enable_ipv6: false },
+});
 
 await utils.searchReplace(
   "./code/.env.example",
