@@ -6,8 +6,8 @@
 //   SCHEMA=public TABLE=test_realtime EVENT=* TENANT=realtime-dev TIMEOUT_MS=60000
 
 // Optional hardcoded defaults (leave empty to require env/args)
-const DEFAULT_SUPABASE_URL = "X";
-const DEFAULT_ANON_KEY = "X";
+const DEFAULT_SUPABASE_URL = "https://projetosteste-supabase-dialogy.bzpwtu.easypanel.host";
+const DEFAULT_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzcwODYyOTUxLCJleHAiOjIwODYyMjI5NTF9.Q7D6_Pd-DheHThfDHslox8Mk8XIAs6GE-B1jEjc9bdc";
 
 const args = Object.fromEntries(
   process.argv.slice(2).map((arg) => {
