@@ -235,10 +235,17 @@ services:
         paths:
           - /api/mcp
     plugins:
+<<<<<<< HEAD
       #- name: request-termination
         #config:
           #status_code: 403
           #message: "Access is forbidden."
+=======
+  #    - name: request-termination
+  #      config:
+  #        status_code: 403
+  #        message: "Access is forbidden."
+>>>>>>> 095d664b525f3817d1a1dd0b1c2af8e19163f9f4
 
   ## MCP endpoint - local access
   - name: mcp
@@ -252,9 +259,15 @@ services:
     plugins:
       # Block access to /mcp by default
       #- name: request-termination
+<<<<<<< HEAD
       #  config:
       #    status_code: 403
       #    message: "Access is forbidden."
+=======
+        #config:
+          #status_code: 403
+         # message: "Access is forbidden."
+>>>>>>> 095d664b525f3817d1a1dd0b1c2af8e19163f9f4
       # Enable local access (danger zone!)
       # 1. Comment out the 'request-termination' section above
       # 2. Uncomment the entire section below, including 'deny'
