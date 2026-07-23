@@ -56,8 +56,8 @@ async function removePorts(path) {
 async function copyDir(src, dest) {
   console.log(`Copying ${src} to ${dest}`);
 
-  await execa("rm", ["-rf", dest]);
-  await execa("cp", ["-r", src, dest]);
+  await fs.promises.rm(dest, { recursive: true, force: true });
+  await fs.promises.cp(src, dest, { recursive: true });
 }
 
 async function downloadFile(url, dest) {
@@ -69,7 +69,7 @@ async function downloadFile(url, dest) {
 async function renameFile(src, dest) {
   console.log(`Renaming ${src} to ${dest}`);
 
-  await execa("mv", [src, dest]);
+  await fs.promises.rename(src, dest);
 }
 
 async function searchReplace(path, search, replace) {
@@ -84,13 +84,13 @@ async function searchReplace(path, search, replace) {
 async function removeDir(path) {
   console.log(`Removing directory ${path}`);
 
-  await execa("rm", ["-rf", path]);
+  await fs.promises.rm(path, { recursive: true, force: true });
 }
 
 async function renameDir(src, dest) {
   console.log(`Renaming directory ${src} to ${dest}`);
 
-  await execa("mv", [src, dest]);
+  await fs.promises.rename(src, dest);
 }
 
 async function addPorts(path, servicePorts) {

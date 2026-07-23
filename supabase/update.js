@@ -7,8 +7,18 @@ await utils.copyDir("./repo/docker", "./code");
 await utils.removeContainerNames("./code/docker-compose.yml");
 await utils.removePorts("./code/docker-compose.yml");
 await utils.addPorts("./code/docker-compose.yml", {
-  db: ["${POSTGRES_PORT}:${POSTGRES_PORT}"],
-  supavisor: ["${POOLER_PROXY_PORT_TRANSACTION}:${POOLER_PROXY_PORT_TRANSACTION}"],
+  studio: ["${STUDIO_PORT:-3000}:3000"],
+  kong: [
+    "${KONG_HTTP_PORT:-8000}:8000",
+    "${KONG_HTTPS_PORT:-8443}:8443",
+  ],
+  auth: ["${GOTRUE_PORT:-9999}:9999"],
+  rest: ["${REST_PORT:-3000}:3000"],
+  realtime: ["${REALTIME_PORT:-4000}:4000"],
+  storage: ["${STORAGE_PORT:-5000}:5000"],
+  meta: ["${META_PORT:-8080}:8080"],
+  db: ["${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}"],
+  supavisor: ["${POOLER_PROXY_PORT_TRANSACTION:-6543}:6543"],
 });
 
 // Realtime needs its container_name for Kong routing and tenant ID parsing
@@ -57,6 +67,15 @@ const realtimeEntrypoint = [
 await fs.promises.mkdir("./code/volumes/realtime", { recursive: true });
 await fs.promises.writeFile("./code/volumes/realtime/entrypoint.sh", realtimeEntrypoint, { mode: 0o755 });
 
+// Add explicit healthcheck for postgres-meta to ensure Docker and Easypanel mark it healthy
+await utils.setServiceProperty("./code/docker-compose.yml", "meta", "healthcheck", {
+  test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/health').then((r) => {if (r.status !== 200) process.exit(1)}).catch(() => process.exit(1))\""],
+  interval: "5s",
+  timeout: "5s",
+  retries: 3,
+  start_period: "10s",
+});
+
 // Disable IPv6 on Docker network to fix Postgrex :enetunreach errors
 // Realtime's detect_ip_version() tries IPv6 first; disabling IPv6 at the network level
 // forces DNS to only return IPv4 addresses
@@ -69,3 +88,23 @@ await utils.searchReplace(
   "SITE_URL=http://localhost:3000",
   "SITE_URL=https://$(PRIMARY_DOMAIN)"
 );
+
+const portsEnvConfig = [
+  "",
+  "############",
+  "# Exposed Ports (Easypanel / Host)",
+  "############",
+  "STUDIO_PORT=3000",
+  "KONG_HTTP_PORT=8000",
+  "KONG_HTTPS_PORT=8443",
+  "GOTRUE_PORT=9999",
+  "REST_PORT=3000",
+  "REALTIME_PORT=4000",
+  "STORAGE_PORT=5000",
+  "META_PORT=8080",
+  "POSTGRES_PORT=5432",
+  "POOLER_PROXY_PORT_TRANSACTION=6543",
+  "",
+].join("\n");
+
+await fs.promises.appendFile("./code/.env.example", portsEnvConfig);
