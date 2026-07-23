@@ -335,7 +335,10 @@ services:
       DISABLE_HEALTHCHECK_LOGGING: "true"
     ports:
       - ${REALTIME_PORT:-4000}:4000
-    container_name: realtime-dev.supabase-realtime
+    networks:
+      default:
+        aliases:
+          - realtime-dev.supabase-realtime
     entrypoint:
       - /usr/bin/tini
       - -s
@@ -491,8 +494,9 @@ services:
 
   # Comment out everything below this point if you are using an external Postgres database
   db:
-    # To upgrade an existing Postgres 15 database in place, see utils/upgrade-pg17.sh.
-    image: supabase/postgres:17.6.1.136
+    # Keep PG15 for compatibility with existing Easypanel volumes.
+    # A major upgrade to PG17 requires running utils/upgrade-pg17.sh first.
+    image: supabase/postgres:15.8.1.085
     restart: unless-stopped
     volumes:
       - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z

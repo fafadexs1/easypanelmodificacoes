@@ -21,8 +21,13 @@ await utils.addPorts("./code/docker-compose.yml", {
   supavisor: ["${POOLER_PROXY_PORT_TRANSACTION:-6543}:6543"],
 });
 
-// Realtime needs its container_name for Kong routing and tenant ID parsing
-await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "container_name", "realtime-dev.supabase-realtime");
+// Keep the hostname expected by Kong without reserving a global container name.
+// A fixed container_name conflicts with stale containers during Easypanel redeploys.
+await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "networks", {
+  default: {
+    aliases: ["realtime-dev.supabase-realtime"],
+  },
+});
 await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "entrypoint", [
   "/usr/bin/tini",
   "-s",
@@ -34,6 +39,15 @@ await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "entrypo
 await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "volumes", [
   "./volumes/realtime/entrypoint.sh:/tmp/realtime-entrypoint.sh:ro,z",
 ]);
+
+// Easypanel deployments may already have a Postgres 15 data directory.
+// Do not switch major versions without the explicit PG17 migration procedure.
+await utils.setServiceProperty(
+  "./code/docker-compose.yml",
+  "db",
+  "image",
+  "supabase/postgres:15.8.1.085",
+);
 
 const realtimeEntrypoint = [
   "#!/bin/bash",
