@@ -62,9 +62,12 @@ PG17_SCRIPTS_REF="17.6.1.063"
 # target's postgres UID, and running the post-upgrade migrations.
 PG17_TARGET_IMAGE="supabase/postgres:17.6.1.136"
 
-DB_CONTAINER="supabase-db"
-UPGRADE_CONTAINER="supabase-pg-upgrade"
-COMPLETE_CONTAINER="supabase-pg-complete"
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-supabase}"
+COMPOSE_OVERRIDE_FILE="${COMPOSE_OVERRIDE_FILE:-}"
+DB_CONTAINER="${DB_CONTAINER:-}"
+DB_CONFIG_VOLUME="${DB_CONFIG_VOLUME:-}"
+UPGRADE_CONTAINER="${UPGRADE_CONTAINER:-${COMPOSE_PROJECT}-pg-upgrade}"
+COMPLETE_CONTAINER="${COMPLETE_CONTAINER:-${COMPOSE_PROJECT}-pg-complete}"
 
 DATA_DIR="./volumes/db/data"
 BACKUP_DIR="./volumes/db/data.bak.pg15"
@@ -79,6 +82,26 @@ MIGRATION_DIR="./volumes/db/data_migration"
 die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 info() { printf '\n==> %s\n' "$*"; }
 warn() { printf 'Warning: %s\n' "$*" >&2; }
+
+compose_base() {
+    if [ -n "$COMPOSE_OVERRIDE_FILE" ]; then
+        docker compose -p "$COMPOSE_PROJECT" \
+            -f docker-compose.yml -f "$COMPOSE_OVERRIDE_FILE" "$@"
+    else
+        docker compose -p "$COMPOSE_PROJECT" -f docker-compose.yml "$@"
+    fi
+}
+
+compose_pg17() {
+    if [ -n "$COMPOSE_OVERRIDE_FILE" ]; then
+        docker compose -p "$COMPOSE_PROJECT" \
+            -f docker-compose.yml -f "$COMPOSE_OVERRIDE_FILE" \
+            -f docker-compose.pg17.yml "$@"
+    else
+        docker compose -p "$COMPOSE_PROJECT" \
+            -f docker-compose.yml -f docker-compose.pg17.yml "$@"
+    fi
+}
 
 # Temp dir on host for tarball + scripts (mounted into containers)
 staging_dir=""
@@ -160,10 +183,23 @@ preflight() {
     [ -f docker-compose.yml ] || die "Run this script from the docker/ directory."
     [ -f docker-compose.pg17.yml ] || die "Missing docker-compose.pg17.yml."
     [ -f .env ] || die "Missing .env file."
+    if [ -n "$COMPOSE_OVERRIDE_FILE" ]; then
+        [ -f "$COMPOSE_OVERRIDE_FILE" ] \
+            || die "Missing Compose override file: $COMPOSE_OVERRIDE_FILE"
+    fi
 
-    # Resolve db-config volume (exact match on _db-config suffix or bare db-config)
-    db_config_vol=$(docker volume ls --filter "name=db-config" --format '{{.Name}}' \
-        | grep -E '^db-config$|_db-config$' | head -n 1)
+    if [ -z "$DB_CONTAINER" ]; then
+        DB_CONTAINER=$(compose_base ps -q db 2>/dev/null | head -n 1)
+    fi
+    [ -n "$DB_CONTAINER" ] \
+        || die "Could not resolve the db container for project '$COMPOSE_PROJECT'."
+
+    # Prefer the project-specific volume so another Supabase stack is never selected.
+    db_config_vol="$DB_CONFIG_VOLUME"
+    if [ -z "$db_config_vol" ]; then
+        db_config_vol=$(docker volume ls --format '{{.Name}}' \
+            | grep -E "^${COMPOSE_PROJECT}_db-config$" | head -n 1)
+    fi
     [ -n "$db_config_vol" ] || die "Could not find db-config volume. Is Supabase running?"
 
     pg_password=$(grep '^POSTGRES_PASSWORD=' .env | cut -d '=' -f 2- | sed "s/^['\"]//;s/['\"]$//" | head -n 1)
@@ -415,7 +451,7 @@ stop_and_backup() {
     echo "  Saved to: $key_backup"
 
     info "Stopping all Supabase services"
-    docker compose down
+    compose_base down
 
     echo "  Original data will be preserved as: $BACKUP_DIR"
 }
@@ -621,7 +657,7 @@ start_pg17() {
         chown -R postgres:postgres /vol/
     '
 
-    docker compose -f docker-compose.yml -f docker-compose.pg17.yml up -d
+    compose_pg17 up -d
 
     echo "  Waiting for Postgres 17 to be ready..."
     local retries=60
