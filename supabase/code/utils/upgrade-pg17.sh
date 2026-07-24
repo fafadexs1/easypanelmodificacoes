@@ -659,6 +659,12 @@ start_pg17() {
 
     compose_pg17 up -d
 
+    # Compose recreates the database container during the major-version switch.
+    # Resolve its new ID instead of polling the removed Postgres 15 container.
+    DB_CONTAINER=$(compose_pg17 ps -q db 2>/dev/null | head -n 1)
+    [ -n "$DB_CONTAINER" ] \
+        || die "Could not resolve the recreated Postgres 17 container."
+
     echo "  Waiting for Postgres 17 to be ready..."
     local retries=60
     while [ $retries -gt 0 ]; do

@@ -40,13 +40,13 @@ await utils.setServiceProperty("./code/docker-compose.yml", "realtime", "volumes
   "./volumes/realtime/entrypoint.sh:/tmp/realtime-entrypoint.sh:ro,z",
 ]);
 
-// Easypanel deployments may already have a Postgres 15 data directory.
-// Do not switch major versions without the explicit PG17 migration procedure.
+// The Easypanel database volume has completed the explicit PG15 -> PG17 migration.
+// Keep subsequent upstream syncs on PG17; running PG15 on this volume is unsafe.
 await utils.setServiceProperty(
   "./code/docker-compose.yml",
   "db",
   "image",
-  "supabase/postgres:15.8.1.085",
+  "supabase/postgres:17.6.1.136",
 );
 
 const realtimeEntrypoint = [

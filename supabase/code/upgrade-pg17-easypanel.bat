@@ -28,6 +28,7 @@ echo A migracao causa indisponibilidade e nao deve ser interrompida.
 echo.
 
 set /p "CONFIRM=Digite MIGRAR-PG17 para continuar: "
+set "CONFIRM=%CONFIRM: =%"
 if /I not "%CONFIRM%"=="MIGRAR-PG17" (
     echo Operacao cancelada.
     pause
