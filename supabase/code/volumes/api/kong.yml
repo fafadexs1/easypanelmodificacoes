@@ -451,7 +451,6 @@ services:
             - ::1
             # Estacao de trabalho - IP publico fixo
             - 192.145.213.2
-            - 2804:3cd0:c5:d9ac::/64
           deny: []
 
   ## Protected Dashboard - catch all remaining routes
