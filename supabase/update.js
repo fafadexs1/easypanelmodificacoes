@@ -138,8 +138,15 @@ if (!(await fs.promises.readFile(kongConfigPath, "utf8")).includes("$MCP_ALLOWED
   );
 }
 
+// KONG_TRUSTED_IPS is what makes the allowlist compare the real client instead of
+// the Easypanel proxy. Scope it to the internal overlay network only: with recursive
+// real-ip resolution, a spoofed X-Forwarded-For from the internet is discarded
+// because the proxy appends the true peer address after it.
 await utils.setServiceEnv("./code/docker-compose.yml", "kong", {
   MCP_ALLOWED_IP: "${MCP_ALLOWED_IP:-127.0.0.1}",
+  KONG_TRUSTED_IPS: "${KONG_TRUSTED_IPS:-10.11.0.0/16}",
+  KONG_REAL_IP_HEADER: "X-Forwarded-For",
+  KONG_REAL_IP_RECURSIVE: "on",
 });
 
 await utils.searchReplace(
@@ -170,6 +177,9 @@ const portsEnvConfig = [
   "# The /mcp route has NO authentication - this IP allowlist is the only barrier.",
   "# Leave as 127.0.0.1 to keep it unreachable from outside the host.",
   "MCP_ALLOWED_IP=127.0.0.1",
+  "# Internal network Kong trusts for X-Forwarded-For. Must cover the Easypanel",
+  "# proxy, and nothing else - widening this lets clients spoof their own IP.",
+  "KONG_TRUSTED_IPS=10.11.0.0/16",
   "",
 ].join("\n");
 

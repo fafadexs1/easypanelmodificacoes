@@ -112,6 +112,12 @@ services:
       # IP liberado no allowlist do /mcp (ip-restriction em volumes/api/kong.yml).
       # Default 127.0.0.1 = ninguem de fora entra se a variavel nao for definida.
       MCP_ALLOWED_IP: ${MCP_ALLOWED_IP:-127.0.0.1}
+      # Sem isto o Kong compara o IP do proxy do Easypanel (rede overlay interna)
+      # em vez do cliente real, e o allowlist acima nunca casa. Confie apenas na
+      # rede interna: assim so o proxy pode definir X-Forwarded-For, nao a internet.
+      KONG_TRUSTED_IPS: ${KONG_TRUSTED_IPS:-10.11.0.0/16}
+      KONG_REAL_IP_HEADER: X-Forwarded-For
+      KONG_REAL_IP_RECURSIVE: "on"
     entrypoint: [ "/bin/sh", "/home/kong/kong-entrypoint.sh" ]
     ports:
       - ${KONG_HTTP_PORT:-8000}:8000
