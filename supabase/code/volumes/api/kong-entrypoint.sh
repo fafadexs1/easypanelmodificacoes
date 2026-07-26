@@ -7,21 +7,32 @@
 # to legacy-only behavior - just passing apikey as-is.
 #
 # Full expression logic (when opaque keys are configured):
-#   1. If Authorization header exists and is NOT an sb_ key -> pass through (user session JWT)
+#   1. If Authorization header exists and is NOT an sb_ key -> pass through (user session JWT),
+#      adding the "Bearer " prefix when the caller sent a bare JWT. Non-JWT schemes
+#      (e.g. AWS4-HMAC-SHA256 for S3) are passed through untouched.
 #   2. If apikey matches secret key -> set service_role asymmetric JWT internal "API key"
 #   3. If apikey matches publishable key -> set anon asymmetric JWT internal "API key"
-#   4. Fallback: pass apikey as-is (legacy HS256 JWT)
+#   4. Fallback: pass apikey as "Bearer <apikey>" (legacy HS256 JWT)
+#
+# The "Bearer " prefix is mandatory: Realtime's /api/* plugs match on
+# ["Bearer " <> token] and crash with a MatchError (HTTP 500) on a bare token.
+
+# Reused sub-expressions (kept in variables so both branches stay in sync).
+# LUA_AUTH_PASSTHROUGH: honour a caller-supplied Authorization header.
+# LUA_APIKEY_BEARER:    turn a bare apikey into a Bearer credential.
+LUA_AUTH_PASSTHROUGH="(headers.authorization ~= nil and headers.authorization ~= '' and headers.authorization:sub(1, 10) ~= 'Bearer sb_' and headers.authorization:sub(1, 3) ~= 'sb_' and ((headers.authorization:sub(1, 3) == 'eyJ' and 'Bearer '..headers.authorization) or headers.authorization))"
+LUA_APIKEY_BEARER="(headers.apikey ~= nil and headers.apikey ~= '' and ((headers.apikey:sub(1, 7) == 'Bearer ' and headers.apikey) or ('Bearer '..headers.apikey)))"
 
 if [ -n "$SUPABASE_SECRET_KEY" ] && [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
     # Opaque keys configured -> full translation expressions
-    export LUA_AUTH_EXPR="\$((headers.authorization ~= nil and headers.authorization:sub(1, 10) ~= 'Bearer sb_' and headers.authorization) or (headers.apikey == '$SUPABASE_SECRET_KEY' and 'Bearer $SERVICE_ROLE_KEY_ASYMMETRIC') or (headers.apikey == '$SUPABASE_PUBLISHABLE_KEY' and 'Bearer $ANON_KEY_ASYMMETRIC') or headers.apikey)"
+    export LUA_AUTH_EXPR="\$($LUA_AUTH_PASSTHROUGH or (headers.apikey == '$SUPABASE_SECRET_KEY' and 'Bearer $SERVICE_ROLE_KEY_ASYMMETRIC') or (headers.apikey == '$SUPABASE_PUBLISHABLE_KEY' and 'Bearer $ANON_KEY_ASYMMETRIC') or $LUA_APIKEY_BEARER or nil)"
 
     # Realtime WebSocket: reads from query_params.apikey (supabase-js sends apikey
     # via query string), outputs to x-api-key header which Realtime checks first.
     export LUA_RT_WS_EXPR="\$((query_params.apikey == '$SUPABASE_SECRET_KEY' and '$SERVICE_ROLE_KEY_ASYMMETRIC') or (query_params.apikey == '$SUPABASE_PUBLISHABLE_KEY' and '$ANON_KEY_ASYMMETRIC') or query_params.apikey)"
 else
-    # Legacy API keys, not sb_ API keys -> pass apikey through unchanged
-    export LUA_AUTH_EXPR="\$((headers.authorization ~= nil and headers.authorization:sub(1, 10) ~= 'Bearer sb_' and headers.authorization) or headers.apikey)"
+    # Legacy API keys, not sb_ API keys -> pass apikey through as a Bearer credential
+    export LUA_AUTH_EXPR="\$($LUA_AUTH_PASSTHROUGH or $LUA_APIKEY_BEARER or nil)"
     export LUA_RT_WS_EXPR="\$(query_params.apikey)"
 fi
 
