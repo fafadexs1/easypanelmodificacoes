@@ -123,6 +123,28 @@ async function setServiceProperty(path, serviceName, property, value) {
   await fs.promises.writeFile(path, document.toString());
 }
 
+async function setServiceEnv(path, serviceName, env) {
+  console.log(`Setting env vars on service ${serviceName} in ${path}`);
+
+  const file = await fs.promises.readFile(path, "utf8");
+  const document = yaml.parseDocument(file);
+
+  const service = document.getIn(["services", serviceName]);
+  if (!service) return;
+
+  // Merge into the existing map instead of replacing it, so upstream vars survive.
+  let environment = service.get("environment");
+  if (!environment) {
+    service.set("environment", env);
+  } else {
+    for (const [key, value] of Object.entries(env)) {
+      environment.set(key, value);
+    }
+  }
+
+  await fs.promises.writeFile(path, document.toString());
+}
+
 async function setTopLevelProperty(path, property, value) {
   console.log(`Setting top-level ${property} in ${path}`);
 
@@ -138,6 +160,7 @@ export default {
   removePorts,
   addPorts,
   setServiceProperty,
+  setServiceEnv,
   setTopLevelProperty,
   copyDir,
   downloadFile,

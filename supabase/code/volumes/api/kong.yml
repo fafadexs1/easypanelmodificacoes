@@ -449,8 +449,10 @@ services:
           allow:
             - 127.0.0.1
             - ::1
-            # Estacao de trabalho - IP publico fixo
-            - 192.145.213.2
+            # Estacao de trabalho - valor vem de MCP_ALLOWED_IP no ambiente
+            # (substituido pelo kong-entrypoint.sh). Nao versionar o IP aqui:
+            # este repositorio e publico.
+            - $MCP_ALLOWED_IP
           deny: []
 
   ## Protected Dashboard - catch all remaining routes

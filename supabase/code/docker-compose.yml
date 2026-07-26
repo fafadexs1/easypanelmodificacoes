@@ -109,6 +109,9 @@ services:
       SERVICE_ROLE_KEY_ASYMMETRIC: ${SERVICE_ROLE_KEY_ASYMMETRIC:-}
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+      # IP liberado no allowlist do /mcp (ip-restriction em volumes/api/kong.yml).
+      # Default 127.0.0.1 = ninguem de fora entra se a variavel nao for definida.
+      MCP_ALLOWED_IP: ${MCP_ALLOWED_IP:-127.0.0.1}
     entrypoint: [ "/bin/sh", "/home/kong/kong-entrypoint.sh" ]
     ports:
       - ${KONG_HTTP_PORT:-8000}:8000

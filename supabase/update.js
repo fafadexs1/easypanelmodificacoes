@@ -97,6 +97,51 @@ await utils.setTopLevelProperty("./code/docker-compose.yml", "networks", {
   default: { enable_ipv6: false },
 });
 
+// Upstream ships /mcp blocked by a request-termination plugin. Swap it for an IP
+// allowlist so the endpoint can be reached from a known address. The copyDir above
+// restores the pristine kong.yml on every run, so this has to be reapplied here.
+// The allowed IP is NOT hardcoded: kong-entrypoint.sh substitutes $MCP_ALLOWED_IP
+// from the environment, keeping the address out of this public repository.
+const kongConfigPath = "./code/volumes/api/kong.yml";
+
+await utils.searchReplace(
+  kongConfigPath,
+  `      - name: request-termination
+        config:
+          status_code: 403
+          message: "Access is forbidden."
+      # Enable local access (danger zone!)`,
+  `      #- name: request-termination
+      #  config:
+      #    status_code: 403
+      #    message: "Access is forbidden."
+      - name: cors
+      - name: ip-restriction
+        config:
+          allow:
+            - 127.0.0.1
+            - ::1
+            # Estacao de trabalho - valor vem de MCP_ALLOWED_IP no ambiente
+            # (substituido pelo kong-entrypoint.sh). Nao versionar o IP aqui:
+            # este repositorio e publico.
+            - $MCP_ALLOWED_IP
+          deny: []
+      # Enable local access (danger zone!)`
+);
+
+// Fail loudly: if upstream reshapes this block the replace above becomes a no-op
+// and /mcp would silently go back to returning 403 after a deploy.
+if (!(await fs.promises.readFile(kongConfigPath, "utf8")).includes("$MCP_ALLOWED_IP")) {
+  throw new Error(
+    `MCP allowlist patch did not apply to ${kongConfigPath} - the upstream /mcp block changed. ` +
+      `Reconcile the search string in supabase/update.js before deploying.`
+  );
+}
+
+await utils.setServiceEnv("./code/docker-compose.yml", "kong", {
+  MCP_ALLOWED_IP: "${MCP_ALLOWED_IP:-127.0.0.1}",
+});
+
 await utils.searchReplace(
   "./code/.env.example",
   "SITE_URL=http://localhost:3000",
@@ -118,6 +163,13 @@ const portsEnvConfig = [
   "META_PORT=8080",
   "POSTGRES_PORT=5432",
   "POOLER_PROXY_PORT_TRANSACTION=6543",
+  "",
+  "############",
+  "# MCP endpoint (/mcp)",
+  "############",
+  "# The /mcp route has NO authentication - this IP allowlist is the only barrier.",
+  "# Leave as 127.0.0.1 to keep it unreachable from outside the host.",
+  "MCP_ALLOWED_IP=127.0.0.1",
   "",
 ].join("\n");
 
